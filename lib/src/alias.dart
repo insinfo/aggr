@@ -2,6 +2,15 @@ import 'dart:math' as math;
 
 typedef u8 = int;
 typedef f64 = double;
+typedef f32 = double;
+
+/// [Machine epsilon] value for `f32`.
+///
+/// This is the difference between `1.0` and the next larger representable number.
+///
+/// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+
+const f32 f32_EPSILON = 1.19209290e-07;
 
 void println(String val, [dynamic a, dynamic b, dynamic c, dynamic d]) {
   var buffer = StringBuffer();
