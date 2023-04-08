@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_cast, annotate_overrides
+// ignore_for_file: unnecessary_cast, annotate_overrides, prefer_final_fields
 
 import 'package:aggr/aggr.dart';
 
@@ -108,9 +108,9 @@ class Rgba8 implements Color {
   bool is_opaque() => alpha() >= 1.0;
 }
 
-class Gray8 {
+class Gray8 implements Color {
   u8 value;
-  u8 alpha;
+  u8 _alpha;
 
   static Gray8 from_trait(Color c) {
     var lum = luminance_u8(c.red8(), c.green8(), c.blue8());
@@ -118,7 +118,7 @@ class Gray8 {
   }
 
   /// Create a new gray scale value
-  Gray8(this.value, [this.alpha = 255]);
+  Gray8(this.value, [this._alpha = 255]);
   static Gray8 new_with_alpha(u8 value, u8 alpha) {
     return Gray8(value, alpha);
   }
@@ -128,8 +128,24 @@ class Gray8 {
   }
 
   List<u8> into_slice() {
-    return [value, alpha];
+    return [value, _alpha];
   }
+
+  f64 red() => color_u8_to_f64(value);
+  f64 green() => color_u8_to_f64(value);
+  f64 blue() => color_u8_to_f64(value);
+  f64 alpha() => color_u8_to_f64(_alpha);
+  u8 alpha8() => _alpha;
+  u8 red8() => value;
+  u8 green8() => value;
+  u8 blue8() => value;
+  bool is_premultiplied() => false;
+
+  /// Return if the color is completely transparent, alpha = 0.0
+  bool is_transparent() => alpha() == 0.0;
+
+  /// Return if the color is completely opaque, alpha = 1.0
+  bool is_opaque() => alpha() >= 1.0;
 }
 
 u8 luminance_u8(u8 red, u8 green, u8 blue) {
@@ -297,7 +313,7 @@ class Rgba8pre implements Color {
   bool is_opaque() => alpha() >= 1.0;
 }
 
-class Srgba8 {
+class Srgba8 extends Color {
   /// Red
   u8 r;
 
@@ -319,9 +335,25 @@ class Srgba8 {
 
   /// Create a new Srgba8 color
   Srgba8(this.r, this.g, this.b, this.a);
+
+  f64 red() => srgb_to_rgb(color_u8_to_f64(r));
+  f64 green() => srgb_to_rgb(color_u8_to_f64(g));
+  f64 blue() => srgb_to_rgb(color_u8_to_f64(b));
+  f64 alpha() => color_u8_to_f64(a);
+  u8 alpha8() => cu8(alpha());
+  u8 red8() => cu8(red());
+  u8 green8() => cu8(green());
+  u8 blue8() => cu8(blue());
+  bool is_premultiplied() => false;
+
+  // /// Return if the color is completely transparent, alpha = 0.0
+  // bool is_transparent() => alpha() == 0.0;
+
+  // /// Return if the color is completely opaque, alpha = 1.0
+  // bool is_opaque() => alpha() >= 1.0;
 }
 
-class Rgba32 {
+class Rgba32 extends Color {
   f32 r;
   f32 g;
   f32 b;
@@ -346,4 +378,14 @@ class Rgba32 {
       return Rgba32(r2, g2, b2, a);
     }
   }
+
+  f64 red() => r;
+  f64 green() => g;
+  f64 blue() => b;
+  f64 alpha() => a;
+  u8 alpha8() => cu8(alpha());
+  u8 red8() => cu8(red());
+  u8 green8() => cu8(green());
+  u8 blue8() => cu8(blue());
+  bool is_premultiplied() => false;
 }

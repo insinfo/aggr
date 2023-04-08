@@ -1,5 +1,20 @@
 import 'package:aggr/aggr.dart';
 
+const i64 POLY_SUBPIXEL_SHIFT = 8;
+const i64 POLY_SUBPIXEL_SCALE = 1 << POLY_SUBPIXEL_SHIFT;
+const i64 POLY_SUBPIXEL_MASK = POLY_SUBPIXEL_SCALE - 1;
+const i64 POLY_MR_SUBPIXEL_SHIFT = 4;
+const MAX_HALF_WIDTH = 64;
+
+abstract class VertexSource {
+    /// Rewind the vertex source (unused)
+     rewind() { }
+    /// Get values from the source
+    ///
+    /// This could be turned into an iterator
+   List<Vertex<f64>>  xconvert();
+}
+
 /// Access Color properties and compoents
 abstract class Color {
   /// Get red value [0,1] as f64
