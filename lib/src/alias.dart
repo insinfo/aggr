@@ -1,9 +1,16 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'precision_native.dart' if (dart.library.html) 'precision_js.dart'
+    as platform_precision;
 
 typedef u8 = int;
 typedef i64 = int;
 typedef f64 = double;
 typedef f32 = double;
+typedef Vec<T> = List<T>;
+typedef usize = int;
+
+const double PI = math.pi;
 
 /// [Machine epsilon] value for `f32`.
 ///
@@ -11,6 +18,53 @@ typedef f32 = double;
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 const f32 f32_EPSILON = 1.19209290e-07;
+
+/// The smallest positive [double] value that is greater than zero.
+const double epsilon = 4.94065645841247E-324;
+
+/// Actual double precision machine epsilon, the smallest number that can be
+/// subtracted from 1, yielding a results different than 1.
+///
+/// This is also known as unit roundoff error. According to the definition of Prof. Demmel.
+/// On a standard machine this is equivalent to [doublePrecision].
+final double machineEpsilon = _measureMachineEpsilon();
+
+/// Actual double precision machine epsilon, the smallest number that can be
+/// added to 1, yielding a results different than 1.
+///
+/// This is also known as unit roundoff error. According to the definition of Prof. Higham.
+/// On a standard machine this is equivalent to [positiveDoublePrecision].
+final double positiveMachineEpsilon = _measurePositiveMachineEpsilon();
+
+/// Calculates the actual (negative) double precision machine epsilon -
+/// the smallest number that can be subtracted from 1, yielding a results different than 1.
+///
+/// This is also known as unit roundoff error. According to the definition of Prof. Demmel.
+double _measureMachineEpsilon() {
+  var eps = 1.0;
+  while ((1.0 - (eps / 2.0)) < 1.0) {
+    eps /= 2.0;
+  }
+  return eps;
+}
+
+/// Calculates the actual positive double precision machine epsilon -
+/// the smallest number that can be added to 1, yielding a results different than 1.
+///
+/// This is also known as unit roundoff error. According to the definition of Prof. Higham.
+double _measurePositiveMachineEpsilon() {
+  var eps = 1.0;
+  while ((1.0 + (eps / 2.0)) > 1.0) {
+    eps /= 2.0;
+  }
+  return eps;
+}
+
+/// The smallest possible value of an int within 64 bits.
+const int intMinValue = platform_precision.intMinValue;
+
+/// The biggest possible value of an int within 64 bits.
+const int intMaxValue = platform_precision.intMaxValue;
 
 void println(String val, [dynamic a, dynamic b, dynamic c, dynamic d]) {
   var buffer = StringBuffer();
@@ -39,6 +93,8 @@ extension IntExtensions on int {
   int wrapping_sub(int other) {
     return this - other;
   }
+
+  int get MAX => intMaxValue;
 }
 
 extension DoubleExtensions on double {
@@ -55,14 +111,44 @@ extension DoubleExtensions on double {
   double sqrt() {
     return math.sqrt(this);
   }
+
+  double acos() {
+    return math.acos(this);
+  }
+
+  double cos() {
+    return math.cos(this);
+  }
+
+  double sin() {
+    return math.sin(this);
+  }
 }
 
-extension ListExtension on List {
+extension ListExtension<T> on List<T> {
   void reverse() {
     var reversed = this.reversed.toList();
     clear();
     addAll(reversed);
   }
+
+  List<T> copy() => List<T>.from(this);
+
+  List clone() => json.decode(json.encode(this));
+
+  void push(value) {
+    add(value);
+  }
+
+  void extend(Iterable<T> iterable) {
+    addAll(iterable);
+  }
+
+  int len() => length;
+
+  /// O método pop() remove o último elemento de um array e retorna aquele elemento.
+  /// Removes and returns the last object in this list.
+  T pop() => removeLast();
 }
 
 class Tuple2<T1, T2> {

@@ -8,7 +8,7 @@ const MAX_HALF_WIDTH = 64;
 
 abstract class VertexSource {
     /// Rewind the vertex source (unused)
-     rewind() { }
+   void  rewind() { }
     /// Get values from the source
     ///
     /// This could be turned into an iterator
