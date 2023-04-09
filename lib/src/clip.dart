@@ -141,159 +141,171 @@ u8 clip_flags2<T extends num>(T x, T y, T x1, T y1, T x2, T y2) {
   return code;
 }
 
+i64 mul_div(i64 a, i64 b, i64 c) {
+  final aa = a.toDouble();
+  final bb = b.toDouble();
+  final cc = c.toDouble();
+  return (aa * bb / cc).round();
+}
+
 /// Clip Region
 ///
 /// Clipping for Rasterizers
-/*
-#[derive(Debug)]
- struct Clip {
-    /// Current x Point
-    x1: i64,
-    /// Current y Point
-    y1: i64,
-    /// Rectangle to clip on
-    clip_box: Option<Rectangle<i64>>,
-    /// Current clip flag for point (x1,y1)
-    clip_flag: u8,
-}
+class Clip {
+  /// Current x Point
+  i64 x1;
 
-fn mul_div(a: i64, b: i64, c: i64) -> i64 {
-    let (a,b,c) = (a as f64, b as f64, c as f64);
-    (a * b / c).round() as i64
-}
-impl Clip {
-    /// Create new Clipping region
-    new() -> Self {
-        Self {x1: 0, y1: 0,
-              clip_box: None,
-              clip_flag: INSIDE }
+  /// Current y Point
+  i64 y1;
+
+  /// Rectangle to clip on
+  Rectangle<i64>? _clip_box;
+
+  /// Current clip flag for point (x1,y1)
+  u8 clip_flag;
+
+  Clip(this.x1, this.y1, this._clip_box, this.clip_flag);
+
+  /// Create new Clipping region
+  factory Clip.newClip() {
+    return Clip(0, 0, null, INSIDE);
+  }
+
+  /// Clip a line along the top and bottom of the regon
+  void line_clip_y(
+      RasterizerCell ras, i64 x1, i64 y1, i64 x2, i64 y2, u8 f1, u8 f2) {
+    if (this._clip_box == null) {
+      return;
     }
-    /// Clip a line along the top and bottom of the regon
-    fn line_clip_y(&self, ras: &mut RasterizerCell,
-                   x1: i64, y1: i64,
-                   x2: i64, y2: i64,
-                   f1: u8, f2: u8) {
-        let b = match this.clip_box {
-            None => return,
-            Some(ref b) => b,
-        };
-        let f1 = f1 & (TOP|BOTTOM);
-        let f2 = f2 & (TOP|BOTTOM);
-        // Fully Visible in y
-        if f1 == INSIDE && f2 == INSIDE {
-            ras.line(x1,y1,x2,y2);
-        } else {
-            // Both points above or below clip box
-            if f1 == f2 {
-                return;
-            }
-            let (mut tx1, mut ty1, mut tx2, mut ty2) = (x1,y1,x2,y2);
-            if f1 == BOTTOM {
-                tx1 = x1 + mul_div(b.y1-y1, x2-x1, y2-y1);
-                ty1 = b.y1;
-            }
-            if f1 == TOP {
-                tx1 = x1 + mul_div(b.y2-y1, x2-x1, y2-y1);
-                ty1 = b.y2;
-            }
-            if f2 == BOTTOM {
-                tx2 = x1 + mul_div(b.y1-y1, x2-x1, y2-y1);
-                ty2 = b.y1;
-            }
-            if f2 == TOP {
-                tx2 = x1 + mul_div(b.y2-y1, x2-x1, y2-y1);
-                ty2 = b.y2;
-            }
-            ras.line(tx1,tx2,ty1,ty2);
-        }
+    var b = this._clip_box!;
+
+    f1 = f1 & (TOP | BOTTOM);
+    f2 = f2 & (TOP | BOTTOM);
+    // Fully Visible in y
+    if (f1 == INSIDE && f2 == INSIDE) {
+      ras.line(x1, y1, x2, y2);
+    } else {
+      // Both points above or below clip box
+      if (f1 == f2) {
+        return;
+      }
+
+      var tx1 = x1;
+      var ty1 = y1;
+      var tx2 = x2;
+      var ty2 = y2;
+
+      if (f1 == BOTTOM) {
+        tx1 = x1 + mul_div(b.y1 - y1, x2 - x1, y2 - y1);
+        ty1 = b.y1;
+      }
+      if (f1 == TOP) {
+        tx1 = x1 + mul_div(b.y2 - y1, x2 - x1, y2 - y1);
+        ty1 = b.y2;
+      }
+      if (f2 == BOTTOM) {
+        tx2 = x1 + mul_div(b.y1 - y1, x2 - x1, y2 - y1);
+        ty2 = b.y1;
+      }
+      if (f2 == TOP) {
+        tx2 = x1 + mul_div(b.y2 - y1, x2 - x1, y2 - y1);
+        ty2 = b.y2;
+      }
+      ras.line(tx1, tx2, ty1, ty2);
     }
+  }
 
-    /// Draw a line from (x1,y1) to (x2,y2) into a RasterizerCell
-    ///
-    /// Final point (x2,y2) is saved internally as (x1,y1))
-    (crate) fn line_to(&mut self, ras: &mut RasterizerCell, x2: i64, y2: i64) {
-        if let Some(ref b) = this.clip_box {
-            let f2 = b.clip_flags(x2,y2);
-            // Both points above or below clip box
-            let fy1 = (TOP | BOTTOM) & this.clip_flag;
-            let fy2 = (TOP | BOTTOM) & f2;
-            if fy1 != INSIDE && fy1 == fy2 {
-                this.x1 = x2;
-                this.y1 = y2;
-                this.clip_flag = f2;
-                return;
-            }
-            let (x1,y1,f1) = (this.x1, this.y1, this.clip_flag);
-            match (f1 & (LEFT|RIGHT), f2 & (LEFT|RIGHT)) {
-                (INSIDE,INSIDE) => this.line_clip_y(ras, x1,y1,x2,y2,f1,f2),
-                (INSIDE,RIGHT) => {
-                    let y3 = y1 + mul_div(b.x2-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x2, y3);
-                    this.line_clip_y(ras, x1,   y1, b.x2, y3, f1, f3);
-                    this.line_clip_y(ras, b.x2, y3, b.x2, y2, f3, f2);
-                },
-                (RIGHT,INSIDE) => {
-                    let y3 = y1 + mul_div(b.x2-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x2, y3);
-                    this.line_clip_y(ras, b.x2, y1, b.x2, y3, f1, f3);
-                    this.line_clip_y(ras, b.x2, y3,   x2, y2, f3, f2);
-                },
-                (INSIDE,LEFT) => {
-                    let y3 = y1 + mul_div(b.x1-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x1, y3);
-                    this.line_clip_y(ras, x1,   y1, b.x1, y3, f1, f3);
-                    this.line_clip_y(ras, b.x1, y3, b.x1, y2, f3, f2);
-                },
-                (RIGHT,LEFT) => {
-                    let y3 = y1 + mul_div(b.x2-x1, y2-y1, x2-x1);
-                    let y4 = y1 + mul_div(b.x1-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x2, y3);
-                    let f4 = b.clip_flags(b.x1, y4);
-                    this.line_clip_y(ras, b.x2, y1, b.x2, y3, f1, f3);
-                    this.line_clip_y(ras, b.x2, y3, b.x1, y4, f3, f4);
-                    this.line_clip_y(ras, b.x1, y4, b.x1, y2, f4, f2);
-                },
-                (LEFT,INSIDE) => {
-                    let y3 = y1 + mul_div(b.x1-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x1, y3);
-                    this.line_clip_y(ras, b.x1, y1, b.x1, y3, f1, f3);
-                    this.line_clip_y(ras, b.x1, y3,   x2, y2, f3, f2);
-                },
-                (LEFT,RIGHT) => {
-                    let y3 = y1 + mul_div(b.x1-x1, y2-y1, x2-x1);
-                    let y4 = y1 + mul_div(b.x2-x1, y2-y1, x2-x1);
-                    let f3 = b.clip_flags(b.x1, y3);
-                    let f4 = b.clip_flags(b.x2, y4);
-                    this.line_clip_y(ras, b.x1, y1, b.x1, y3, f1, f3);
-                    this.line_clip_y(ras, b.x1, y3, b.x2, y4, f3, f4);
-                    this.line_clip_y(ras, b.x2, y4, b.x2, y2, f4, f2);
-                },
-                (LEFT,LEFT)   => this.line_clip_y(ras, b.x1,y1,b.x1,y2,f1,f2),
-                (RIGHT,RIGHT) => this.line_clip_y(ras, b.x2,y1,b.x2,y2,f1,f2),
+  /// Draw a line from (x1,y1) to (x2,y2) into a RasterizerCell
+  ///
+  /// Final point (x2,y2) is saved internally as (x1,y1))
+  void line_to(RasterizerCell ras, i64 x2, i64 y2) {
+    if (this._clip_box != null) {
+      var b = this._clip_box!;
 
-                (_,_) => unreachable!("f1,f2 {:?} {:?}", f1,f2),
-            }
-            this.clip_flag = f2;
-        } else {
-            ras.line(this.x1, this.y1, x2, y2);
-        }
+      var f2 = b.clip_flags(x2, y2);
+      // Both points above or below clip box
+      var fy1 = (TOP | BOTTOM) & this.clip_flag;
+      var fy2 = (TOP | BOTTOM) & f2;
+      if (fy1 != INSIDE && fy1 == fy2) {
         this.x1 = x2;
         this.y1 = y2;
+        this.clip_flag = f2;
+        return;
+      }
+
+      var x1 = this.x1;
+      var y1 = this.y1;
+      var f1 = this.clip_flag;
+      var matchVal = Tuple2(f1 & (LEFT | RIGHT), f2 & (LEFT | RIGHT));
+
+      if (matchVal == Tuple2(INSIDE, INSIDE)) {
+        this.line_clip_y(ras, x1, y1, x2, y2, f1, f2);
+      } else if (matchVal == Tuple2(INSIDE, RIGHT)) {
+        var y3 = y1 + mul_div(b.x2 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x2, y3);
+        this.line_clip_y(ras, x1, y1, b.x2, y3, f1, f3);
+        this.line_clip_y(ras, b.x2, y3, b.x2, y2, f3, f2);
+      } else if (matchVal == Tuple2(RIGHT, INSIDE)) {
+        var y3 = y1 + mul_div(b.x2 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x2, y3);
+        this.line_clip_y(ras, b.x2, y1, b.x2, y3, f1, f3);
+        this.line_clip_y(ras, b.x2, y3, x2, y2, f3, f2);
+      } else if (matchVal == Tuple2(INSIDE, LEFT)) {
+        var y3 = y1 + mul_div(b.x1 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x1, y3);
+        this.line_clip_y(ras, x1, y1, b.x1, y3, f1, f3);
+        this.line_clip_y(ras, b.x1, y3, b.x1, y2, f3, f2);
+      } else if (matchVal == Tuple2(RIGHT, LEFT)) {
+        var y3 = y1 + mul_div(b.x2 - x1, y2 - y1, x2 - x1);
+        var y4 = y1 + mul_div(b.x1 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x2, y3);
+        var f4 = b.clip_flags(b.x1, y4);
+        this.line_clip_y(ras, b.x2, y1, b.x2, y3, f1, f3);
+        this.line_clip_y(ras, b.x2, y3, b.x1, y4, f3, f4);
+        this.line_clip_y(ras, b.x1, y4, b.x1, y2, f4, f2);
+      } else if (matchVal == Tuple2(LEFT, INSIDE)) {
+        var y3 = y1 + mul_div(b.x1 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x1, y3);
+        this.line_clip_y(ras, b.x1, y1, b.x1, y3, f1, f3);
+        this.line_clip_y(ras, b.x1, y3, x2, y2, f3, f2);
+      } else if (matchVal == Tuple2(LEFT, RIGHT)) {
+        var y3 = y1 + mul_div(b.x1 - x1, y2 - y1, x2 - x1);
+        var y4 = y1 + mul_div(b.x2 - x1, y2 - y1, x2 - x1);
+        var f3 = b.clip_flags(b.x1, y3);
+        var f4 = b.clip_flags(b.x2, y4);
+        this.line_clip_y(ras, b.x1, y1, b.x1, y3, f1, f3);
+        this.line_clip_y(ras, b.x1, y3, b.x2, y4, f3, f4);
+        this.line_clip_y(ras, b.x2, y4, b.x2, y2, f4, f2);
+      } else if (matchVal == Tuple2(LEFT, LEFT)) {
+        this.line_clip_y(ras, b.x1, y1, b.x1, y2, f1, f2);
+      } else if (matchVal == Tuple2(RIGHT, RIGHT)) {
+        this.line_clip_y(ras, b.x2, y1, b.x2, y2, f1, f2);
+      } else {
+        throw Exception('unreachable!(f1 $f1,f2 $f2)');
+        //print('unreachable!(f1 $f1,f2 $f2)');
+      }
+      this.clip_flag = f2;
+    } else {
+      ras.line(this.x1, this.y1, x2, y2);
     }
-    /// Move to point (x2,y2)
-    ///
-    /// Point is saved internally as (x1,y1)
-    (crate) fn move_to(&mut self, x2: i64, y2: i64) {
-        this.x1 = x2;
-        this.y1 = y2;
-        if let Some(ref b) = this.clip_box {
-            this.clip_flag = clip_flags(&x2,&y2,
-                                        &b.x1,&b.y1,
-                                        &b.x2,&b.y2);
-        }
+    this.x1 = x2;
+    this.y1 = y2;
+  }
+
+  /// Move to point (x2,y2)
+  ///
+  /// Point is saved internally as (x1,y1)
+  void move_to(int x2, int y2) {
+    this.x1 = x2;
+    this.y1 = y2;
+    if (this._clip_box != null) {
+      this.clip_flag = clip_flags2(x2, y2, this._clip_box!.x1,
+          this._clip_box!.y1, this._clip_box!.x2, this._clip_box!.y2);
     }
-    /// Define the clipping region
-    clip_box(&mut self, x1: i64, y1: i64, x2: i64, y2: i64) {
-        this.clip_box = Some( Rectangle::new(x1, y1, x2, y2) );
-    }
-}*/
+  }
+
+  /// Define the clipping region
+  void clip_box(i64 x1, i64 y1, i64 x2, i64 y2) {
+    this._clip_box = Rectangle.newRectangle(x1, y1, x2, y2);
+  }
+}

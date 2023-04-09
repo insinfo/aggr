@@ -1,3 +1,4 @@
+/// This file creates several type aliases to simplify implementations
 import 'dart:convert';
 import 'dart:math' as math;
 import 'precision_native.dart' if (dart.library.html) 'precision_js.dart'
@@ -189,4 +190,46 @@ class Tuple2<T1, T2> {
 
   @override
   int get hashCode => Object.hash(item1.hashCode, item2.hashCode);
+}
+
+class Tuple3<T1, T2, T3> {
+  final T1 item1;
+  final T2 item2;
+  final T3 item3;
+
+  /// Creates a new tuple value with the specified items.
+  const Tuple3(this.item1, this.item2, this.item3);
+
+  /// Create a new tuple value with the specified list [items].
+  factory Tuple3.fromList(List items) {
+    if (items.length != 3) {
+      throw ArgumentError('items must have length 2');
+    }
+
+    return Tuple3<T1, T2, T3>(items[0] as T1, items[1] as T2, items[2] as T3);
+  }
+
+  /// Creates a [List] containing the items of this [Tuple2].
+  ///
+  /// The elements are in item order. The list is variable-length
+  /// if [growable] is true.
+  List toList({bool growable = false}) =>
+      List.from([item1, item2, item3], growable: growable);
+
+  @override
+  String toString() => '[$item1, $item2, $item3]';
+
+  @override
+  bool operator ==(Object other) =>
+      other is Tuple3 &&
+      other.item1 == item1 &&
+      other.item2 == item2 &&
+      other.item3 == item3;
+
+  @override
+  int get hashCode => Object.hash(
+        item1.hashCode,
+        item2.hashCode,
+        item3.hashCode,
+      );
 }
