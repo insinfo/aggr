@@ -9,3 +9,4 @@ build/
 doc/api/
 example.exe
 example.pdb
+pubspec.lock

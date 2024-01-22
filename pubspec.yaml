@@ -4,11 +4,19 @@ version: 1.0.0
 # homepage: https://www.example.com
 
 environment:
-  sdk: '>=2.18.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   path: any
   image: any
+  excel: 3.0.0
+  http: any
+  crypto: any
+
+  ffi: any
+  native_synchronization: any
+  shared_map: ^1.1.6
+
 
 dev_dependencies:
   pedantic: ^1.10.0
