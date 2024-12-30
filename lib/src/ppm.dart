@@ -1,5 +1,3 @@
-
-
 //! Writing of PPM (Portable Pixmap Format) files
 //!
 //! See <https://en.wikipedia.org/wiki/Netpbm_format#PPM_example>
@@ -11,15 +9,43 @@ import 'package:aggr/aggr.dart';
 import 'package:image/image.dart';
 
 Future<Tuple3<Uint8List, int, int>> read_file(String filename) async {
-  final img =  decodeImage(File(filename).readAsBytesSync());
+  final bytes = await File(filename).readAsBytes();
+  final img = decodeImage(bytes);
   final w = img!.width;
   final h = img.height;
-  final buf = img.getBytes();
+  //Similar to toUint8List, but will convert the channels of the image pixels to the given [order].
+  //If that happens, the returned bytes will be a copy and not a direct view of the image data.
+  //If the number of channels needed by [order] differs from what the image has, the bytes will
+  //come from a converted image. If the converted image needs an alpha channel added,
+  //then you can use the [alpha] argument to specify the value of the added alpha channel.
+  final buf = img.convert(numChannels: 3).getBytes(order: ChannelOrder.rgb);
   return Tuple3(buf, w, h);
 }
+
+// Exemplo de escrita PPM manual
+Future<void> write_ppm(
+    Uint8List buf, int width, int height, String filename) async {
+  final file = File(filename);
+  final sink = file.openWrite();
+  // Escreve cabeçalho PPM (P6)
+  sink.writeln('P6');
+  sink.writeln('$width $height');
+  sink.writeln('255');
+  // Escreve bytes RGB
+  sink.add(buf);
+  await sink.close();
+}
+
 /// save file to PNG
-Future<void> write_file(Uint8List buf, int width, int height, String filename) async {
-  final img = Image.fromBytes(width:width, height: height, bytes: buf.buffer);
+Future<void> write_file(
+    Uint8List buf, int width, int height, String filename) async {
+  final img = Image.fromBytes(
+    width: width,
+    height: height,
+    bytes: buf.buffer,
+    numChannels: 3,
+    order: ChannelOrder.rgb,
+  );
   await File(filename).writeAsBytes(encodePng(img));
 }
 

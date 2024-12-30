@@ -46,7 +46,7 @@ class Rgba8 implements Color {
     this.a,
   );
 
-  static Rgba8 from_trait(Color c) {
+  static Rgba8 from_color(Color c) {
     return Rgba8(c.red8(), c.green8(), c.blue8(), c.alpha8());
   }
 
@@ -67,7 +67,7 @@ class Rgba8 implements Color {
   /// Crate new color from a wavelength and gamma
   static Rgba8 from_wavelength_gamma(f64 w, f64 gamma) {
     var c = Rgb8.from_wavelength_gamma(w, gamma);
-    return from_trait(c);
+    return from_color(c);
   }
 
   void clear() {
@@ -106,13 +106,46 @@ class Rgba8 implements Color {
 
   /// Return if the color is completely opaque, alpha = 1.0
   bool is_opaque() => alpha() >= 1.0;
+
+  // Sobrescrita de igualdade
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Rgba8 &&
+        runtimeType == other.runtimeType &&
+        r == other.r &&
+        g == other.g &&
+        b == other.b &&
+        a == other.a;
+  }
+
+  @override
+  int get hashCode => Object.hash(r, g, b, a);
+
+  @override
+  String toString() => 'Rgba8($r, $g, $b, $a)';
 }
 
 class Gray8 implements Color {
   u8 value;
   u8 _alpha;
 
-  static Gray8 from_trait(Color c) {
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Gray8 &&
+        runtimeType == other.runtimeType &&
+        value == other.value &&
+        _alpha == other._alpha;
+  }
+
+  @override
+  int get hashCode => Object.hash(value, _alpha);
+
+  @override
+  String toString() => 'Gray8($value, $_alpha)';
+
+  static Gray8 from_color(Color c) {
     var lum = luminance_u8(c.red8(), c.green8(), c.blue8());
     return Gray8.new_with_alpha(lum, c.alpha8());
   }
@@ -191,7 +224,23 @@ class Rgb8 implements Color {
   u8 g;
   u8 b;
 
-  static Rgb8 from_trait(Color c) {
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Rgb8 &&
+        runtimeType == other.runtimeType &&
+        r == other.r &&
+        g == other.g &&
+        b == other.b;
+  }
+
+  @override
+  int get hashCode => Object.hash(r, g, b);
+
+  @override
+  String toString() => 'Rgb8($r, $g, $b)';
+
+  static Rgb8 from_color(Color c) {
     return Rgb8(c.red8(), c.green8(), c.blue8());
   }
 
@@ -260,7 +309,13 @@ class Rgb8 implements Color {
     var r2 = (r * scale).powf(gamma) * 255.0;
     var g2 = (g * scale).powf(gamma) * 255.0;
     var b2 = (b * scale).powf(gamma) * 255.0;
-    return Rgb8(r2 as u8, g2 as u8, b2 as u8);
+
+    // Arredondar e/ou clamp
+    final rr = r2.clamp(0, 255).round();
+    final gg = g2.clamp(0, 255).round();
+    final bb = b2.clamp(0, 255).round();
+    return Rgb8(rr, gg, bb);
+    //return Rgb8(r2 as u8, g2 as u8, b2 as u8);
   }
 
   f64 red() => color_u8_to_f64(r);
@@ -291,9 +346,26 @@ class Rgba8pre implements Color {
   u8 b;
   u8 a;
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Rgba8pre &&
+        runtimeType == other.runtimeType &&
+        r == other.r &&
+        g == other.g &&
+        b == other.b &&
+        a == other.a;
+  }
+
+  @override
+  int get hashCode => Object.hash(r, g, b, a);
+
+  @override
+  String toString() => 'Rgba8pre($r, $g, $b, $a)';
+
   Rgba8pre(this.r, this.g, this.b, this.a);
 
-  static Rgba8pre from_trait(Color color) {
+  static Rgba8pre from_color(Color color) {
     return Rgba8pre(
         color.red8(), color.green8(), color.blue8(), color.alpha8());
   }
@@ -325,6 +397,23 @@ class Srgba8 extends Color {
 
   /// Alpha
   u8 a;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Srgba8 &&
+        runtimeType == other.runtimeType &&
+        r == other.r &&
+        g == other.g &&
+        b == other.b &&
+        a == other.a;
+  }
+
+  @override
+  int get hashCode => Object.hash(r, g, b, a);
+
+  @override
+  String toString() => 'Srgba8($r, $g, $b, $a)';
 
   static Srgba8 from_rgb(Color c) {
     var r = cu8(rgb_to_srgb(c.red()));
@@ -359,7 +448,24 @@ class Rgba32 extends Color {
   f32 b;
   f32 a;
 
-  static Rgba32 from_trait(Color c) {
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Rgba32 &&
+        runtimeType == other.runtimeType &&
+        r == other.r &&
+        g == other.g &&
+        b == other.b &&
+        a == other.a;
+  }
+
+  @override
+  int get hashCode => Object.hash(r, g, b, a);
+
+  @override
+  String toString() => 'Rgba32($r, $g, $b, $a)';
+
+  static Rgba32 from_color(Color c) {
     return Rgba32(
         c.red() as f32, c.green() as f32, c.blue() as f32, c.alpha() as f32);
   }

@@ -3,10 +3,10 @@
 import 'package:aggr/aggr.dart';
 
 enum PathCommand {
-  Stop,
-  MoveTo,
-  LineTo,
-  Close,
+  stop,
+  moveTo,
+  lineTo,
+  close,
   //Curve3,
   //Curve4,
   //CurveN,
@@ -17,7 +17,7 @@ enum PathCommand {
 
 extension PathCommandExtension on PathCommand {
   PathCommand defaultValue() {
-    return PathCommand.MoveTo;
+    return PathCommand.moveTo;
   }
 }
 
@@ -26,6 +26,9 @@ class Vertex<T> {
   T y;
   PathCommand cmd;
 
+  @override
+  String toString() => 'Vertex<$T>(x=$x, y=$y, cmd=$cmd)';
+
   Vertex(
     this.x,
     this.y,
@@ -33,16 +36,16 @@ class Vertex<T> {
   );
 
   factory Vertex.xy(T x, T y) {
-    return Vertex(x, y, PathCommand.Stop);
+    return Vertex(x, y, PathCommand.stop);
   }
   factory Vertex.move_to(T x, T y) {
-    return Vertex(x, y, PathCommand.MoveTo);
+    return Vertex(x, y, PathCommand.moveTo);
   }
   factory Vertex.line_to(T x, T y) {
-    return Vertex(x, y, PathCommand.LineTo);
+    return Vertex(x, y, PathCommand.lineTo);
   }
   factory Vertex.close_polygon(T x, T y) {
-    return Vertex(x, y, PathCommand.Close);
+    return Vertex(x, y, PathCommand.close);
   }
 }
 
@@ -63,7 +66,7 @@ f64 cross(Vertex<f64> p1, Vertex<f64> p2, Vertex<f64> p) {
   return (p.x - p2.x) * (p2.y - p1.y) - (p.y - p2.y) * (p2.x - p1.x);
 }
 
-class Path {
+class Path implements VertexSource {
   late List<Vertex<f64>> vertices;
 
   Path() {
@@ -89,7 +92,7 @@ class Path {
     }
     var n = vertices.length;
     var last = vertices[n - 1];
-    if (last.cmd == PathCommand.LineTo) {
+    if (last.cmd == PathCommand.lineTo) {
       vertices.add(Vertex.close_polygon(last.x, last.y));
     }
   }
@@ -97,13 +100,23 @@ class Path {
   void arrange_orientations(PathOrientation dir) {
     arrange_orientations2(this, dir);
   }
-}
 
-// impl VertexSource for Path {
-//     fn xconvert(&self) -> Vec<Vertex<f64>> {
-//         self.vertices.clone()
-//     }
-// }
+  // ---------------------------
+  // Implementação de VertexSource:
+  // ---------------------------
+  @override
+  List<Vertex<f64>> xconvert() {
+    // Pode retornar 'vertices' diretamente...
+    return vertices;
+    // ... ou retornar uma cópia, se quiser isolar a lista original:
+    // return List<Vertex<f64>>.from(vertices);
+  }
+
+  @override
+  void rewind() {
+    throw UnimplementedError();
+  }
+}
 
 enum PathOrientation { Clockwise, CounterClockwise }
 
@@ -116,27 +129,27 @@ List<Tuple2> split(List<Vertex<f64>> path) {
     var v = path[i];
 
     if (start == null && end == null) {
-      if (v.cmd == PathCommand.MoveTo) {
+      if (v.cmd == PathCommand.moveTo) {
         start = i;
-      } else if (v.cmd == PathCommand.LineTo) {
-      } else if (v.cmd == PathCommand.Close) {
-      } else if (v.cmd == PathCommand.Stop) {}
+      } else if (v.cmd == PathCommand.lineTo) {
+      } else if (v.cmd == PathCommand.close) {
+      } else if (v.cmd == PathCommand.stop) {}
     } else if (start != null && end == null) {
-      if (v.cmd == PathCommand.MoveTo) {
+      if (v.cmd == PathCommand.moveTo) {
         start = i;
-      } else if (v.cmd == PathCommand.LineTo) {
+      } else if (v.cmd == PathCommand.lineTo) {
         end = i;
-      } else if (v.cmd == PathCommand.Close || v.cmd == PathCommand.Stop) {
+      } else if (v.cmd == PathCommand.close || v.cmd == PathCommand.stop) {
         end = i;
       }
     } else if (start != null && end != null) {
-      if (v.cmd == PathCommand.MoveTo) {
+      if (v.cmd == PathCommand.moveTo) {
         pairs.add(Tuple2(start, end));
         start = i;
         end = null;
-      } else if (v.cmd == PathCommand.LineTo ||
-          v.cmd == PathCommand.Close ||
-          v.cmd == PathCommand.Stop) {
+      } else if (v.cmd == PathCommand.lineTo ||
+          v.cmd == PathCommand.close ||
+          v.cmd == PathCommand.stop) {
         end = i;
       } else if (start == null && end != null) {
         throw Exception('unreachable!("oh on bad state!")');
@@ -157,37 +170,37 @@ List<Tuple2<int, int>> split2(List<Vertex<f64>> path) {
     var v = path[i];
     if (start == null && end == null) {
       switch (v.cmd) {
-        case PathCommand.MoveTo:
+        case PathCommand.moveTo:
           start = i;
           break;
-        case PathCommand.LineTo:
-        case PathCommand.Close:
-        case PathCommand.Stop:
+        case PathCommand.lineTo:
+        case PathCommand.close:
+        case PathCommand.stop:
           break;
       }
     } else if (start != null && end == null) {
       switch (v.cmd) {
-        case PathCommand.MoveTo:
+        case PathCommand.moveTo:
           start = i;
           break;
-        case PathCommand.LineTo:
+        case PathCommand.lineTo:
           end = i;
           break;
-        case PathCommand.Close:
-        case PathCommand.Stop:
+        case PathCommand.close:
+        case PathCommand.stop:
           end = i;
           break;
       }
     } else if (start != null && end != null) {
       switch (v.cmd) {
-        case PathCommand.MoveTo:
+        case PathCommand.moveTo:
           pairs.add(Tuple2(start, end));
           start = i;
           end = null;
           break;
-        case PathCommand.LineTo:
-        case PathCommand.Close:
-        case PathCommand.Stop:
+        case PathCommand.lineTo:
+        case PathCommand.close:
+        case PathCommand.stop:
           end = i;
           break;
       }
@@ -228,7 +241,7 @@ PathOrientation preceive_polygon_orientation(List<Vertex<f64>> vertices) {
     var p1 = vertices[i];
     var p2 = vertices[(i + 1) % n];
     var x1, y1;
-    if (p1.cmd == PathCommand.Close) {
+    if (p1.cmd == PathCommand.close) {
       x1 = p0.x;
       y1 = p0.y;
     } else {
@@ -236,7 +249,7 @@ PathOrientation preceive_polygon_orientation(List<Vertex<f64>> vertices) {
       y1 = p1.y;
     }
     var x2, y2;
-    if (p2.cmd == PathCommand.Close) {
+    if (p2.cmd == PathCommand.close) {
       x2 = p0.x;
       y2 = p0.y;
     } else {
@@ -382,12 +395,12 @@ class RoundedRect implements VertexSource {
           this.rx[i], this.ry[i], a[i], b[i]);
       var verts = arc.xconvert();
       for (var vi in verts) {
-        vi.cmd = PathCommand.LineTo;
+        vi.cmd = PathCommand.lineTo;
       }
       this.vertices.extend(verts);
     }
     if (this.vertices.isNotEmpty) {
-      this.vertices.first.cmd = PathCommand.MoveTo;
+      this.vertices.first.cmd = PathCommand.moveTo;
     }
     var first = this.vertices[0];
     this.vertices.push(Vertex.close_polygon(first.x, first.y));
@@ -500,8 +513,8 @@ class Arc implements VertexSource {
     }
 
     if (vertices.isNotEmpty) {
-      vertices.first.cmd = PathCommand.MoveTo;
-      vertices.last.cmd = PathCommand.Close;
+      vertices.first.cmd = PathCommand.moveTo;
+      vertices.last.cmd = PathCommand.close;
     }
   }
 
